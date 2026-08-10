@@ -2,3 +2,7 @@
 obj/
 bin/
 *.user
+artifacts/
+relay/node_modules/
+relay/.wrangler/
+relay/dist/

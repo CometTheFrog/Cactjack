@@ -1,0 +1,10 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "cactjack-relay",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-08-08",
+  "durable_objects": {
+    "bindings": [{ "name": "TABLES", "class_name": "TableRoom" }]
+  },
+  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["TableRoom"] }]
+}

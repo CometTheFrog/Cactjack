@@ -1,78 +1,81 @@
-> ⚠️ **Don't click Fork!**
-> 
-> This is a GitHub Template repo. If you want to use this for a plugin, [use this template][new-repo] to make a new repo!
->
-> ![image](https://github.com/goatcorp/SamplePlugin/assets/16760685/d9732094-e1ed-4769-a70b-58ed2b92580c)
+# Cactjack
 
-# SamplePlugin
+Cactjack is an experimental multiplayer blackjack table for FFXIV, built as a Dalamud plugin by CometTheFrog.
 
-[![Use This Template badge](https://img.shields.io/badge/Use%20This%20Template-0?logo=github&labelColor=grey)][new-repo]
+The current online alpha includes:
 
+- Solo blackjack practice
+- A local host/table simulator with dummy and chat-assisted guest seats
+- A network lobby for true remote plugin-to-plugin play
+- Host/dealer-only mode, private bankrolls, wagers, ready checks, and remote Hit/Stand actions
+- Six-deck shoe gameplay with splits, doubles, dealer soft-17 behavior, and settlement
 
-Simple example plugin for Dalamud.
+> **Online alpha:** This is an early testing build. Use play chips only. Expect interface and protocol changes, and do not treat balances as currency or permanent records.
 
-This is not designed to be the simplest possible example, but it is also not designed to cover everything you might want to do. For more detailed questions, come ask in [the Discord](https://discord.gg/holdshift).
+## Requirements
 
-## Main Points
+- FINAL FANTASY XIV launched through XIVLauncher with Dalamud enabled
+- Visual Studio 2022 with the .NET desktop workload, or the .NET SDK required by the project
+- Dalamud must have been launched at least once so its development files are available
 
-* Simple functional plugin
-  * Slash command
-  * Main UI
-  * Settings UI
-  * Image loading
-  * Plugin json
-* Simple, slightly-improved plugin configuration handling
-* Project organization
-  * Copies all necessary plugin files to the output directory
-    * Does not copy dependencies that are provided by dalamud
-    * Output directory can be zipped directly and have exactly what is required
-  * Hides data files from visual studio to reduce clutter
-    * Also allows having data files in different paths than VS would usually allow if done in the IDE directly
+## Build
 
+1. Clone this repository.
+2. Open `Cactjack.slnx` in Visual Studio.
+3. Select `Debug` and `x64`, then build the solution.
+4. The development plugin is produced at `Cactjack/bin/x64/Debug/Cactjack.dll`.
 
-The intention is less that any of this is used directly in other projects, and more to show how similar things can be done.
+For a distributable build, select `Release`; its files are produced under `Cactjack/bin/x64/Release/Cactjack/`.
 
-## How To Use
+## Install as a development plugin
 
-### Getting Started
+1. In FFXIV, enter `/xlsettings`.
+2. Open **Experimental** and add the full path to the built `Cactjack.dll` under **Dev Plugin Locations**.
+3. Enter `/xlplugins`, open **Dev Tools → Installed Dev Plugins**, and enable **Cactjack**.
+4. Enter `/cactjack` to open or close the table window.
 
-To begin, [clone this template repository][new-repo] to your own GitHub account. This will automatically bring in everything you need to get a jumpstart on development. You do not need to fork this repository unless you intend to contribute modifications to it.
+## Test a remote table
 
-Be sure to also check out the [Dalamud Developer Docs][dalamud-docs] for helpful information about building your own plugin. The Developer Docs includes helpful information about all sorts of things, including [how to submit][submit] your newly-created plugin to the official repository. Assuming you use this template repository, the provided project build configuration and license are already chosen to make everything a breeze.
+Both players need the same Cactjack build and an internet connection.
 
-[new-repo]: https://github.com/new?template_name=SamplePlugin&template_owner=goatcorp
-[dalamud-docs]: https://dalamud.dev
-[submit]: https://dalamud.dev/plugin-publishing/submission
+1. The dealer opens **Network Lobby**, enters a character name, and creates a table.
+2. The dealer sends the displayed six-character room code to the other tester.
+3. The player opens **Network Lobby**, enters their character name and the room code, then joins.
+4. The player chooses a wager and marks Ready.
+5. The dealer starts the round. The player uses their own Hit and Stand controls.
 
-### Prerequisites
+The hosted relay carries table messages between plugin instances. The dealer remains authoritative for cards and settlement; the relay does not store a permanent bankroll ledger.
 
-SamplePlugin assumes all the following prerequisites are met:
+## Chat-assisted guests
 
-* XIVLauncher, FINAL FANTASY XIV, and Dalamud have all been installed and the game has been run with Dalamud at least once.
-* XIVLauncher is installed to its default directories and configurations.
-  * If a custom path is required for Dalamud's dev directory, it must be set with the `DALAMUD_HOME` environment variable.
-* A .NET Core 8 SDK has been installed and configured, or is otherwise available. (In most cases, the IDE will take care of this.)
+The local table simulator can represent a player who does not run Dalamud. Bind the guest seat to their party name and announce the hand in party chat. During their turn they can answer with:
 
-### Building
+- `cj hit`
+- `cj stand`
 
-1. Open up `SamplePlugin.sln` in your C# editor of choice (likely [Visual Studio](https://visualstudio.microsoft.com) or [JetBrains Rider](https://www.jetbrains.com/rider/)).
-2. Build the solution. By default, this will build a `Debug` build, but you can switch to `Release` in your IDE.
-3. The resulting plugin can be found at `SamplePlugin/bin/x64/Debug/SamplePlugin.dll` (or `Release` if appropriate.)
+The host must have the **Host** view selected for chat-assisted commands to be processed. Bankroll information remains private to the host unless the host chooses to share it.
 
-### Activating in-game
+## Relay development
 
-1. Launch the game and use `/xlsettings` in chat or `xlsettings` in the Dalamud Console to open up the Dalamud settings.
-    * In here, go to `Experimental`, and add the full path to the `SamplePlugin.dll` to the list of Dev Plugin Locations.
-2. Next, use `/xlplugins` (chat) or `xlplugins` (console) to open up the Plugin Installer.
-    * In here, go to `Dev Tools > Installed Dev Plugins`, and the `SamplePlugin` should be visible. Enable it.
-3. You should now be able to use `/pmycommand` (chat) or `pmycommand` (console)!
+The Cloudflare Worker relay source is in `relay/`. To validate it locally:
 
-Note that you only need to add it to the Dev Plugin Locations once (Step 1); it is preserved afterwards. You can disable, enable, or load your plugin on startup through the Plugin Installer.
+```text
+cd relay
+npm install
+npm run check
+```
 
-### Reconfiguring for your own uses
+Deployment requires a Cloudflare account and Wrangler authentication. No Cloudflare credentials are stored in this repository.
 
-Replace all references to `SamplePlugin` in all the files and filenames with your desired name, then start building the plugin of your dreams. You'll figure it out 😁
+## Current alpha limitations
 
-Dalamud will load the JSON file (by default, `SamplePlugin/SamplePlugin.json`) next to your DLL and use it for metadata, including the description for your plugin in the Plugin Installer. Make sure to update this with information relevant to _your_ plugin!
+- Online play is intentionally small-table testing, not a public matchmaking service.
+- Reconnect and failure handling are still being hardened.
+- The user interface is functional and responsive work is ongoing.
+- Splits and doubles should receive additional two-client regression testing before a wider release.
 
-All participation in this repository is governed by our [Code of Conduct](https://dalamud.dev/code-of-conduct). If you used AI tooling at any point, review the [AI Usage Policy](https://dalamud.dev/plugin-publishing/ai-policy) and disclose your level of AI use. Entirely AI-generated submissions will be rejected, and undisclosed AI use may result in a ban.
+Please report the room role, action taken, and what each player saw when filing a test issue. Screenshots are especially useful.
+
+## License
+
+Cactjack is licensed under AGPL-3.0-or-later. See `LICENSE.md`.

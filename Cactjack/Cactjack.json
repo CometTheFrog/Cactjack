@@ -1,0 +1,12 @@
+{
+  "Author": "CometTheFrog",
+  "Name": "Cactjack",
+  "Punchline": "A blackjack table for FFXIV.",
+  "Description": "Cactjack is a blackjack plugin for FFXIV. Use /cactjack to open the table.",
+  "ApplicableVersion": "any",
+  "Tags": [
+    "blackjack",
+    "cards",
+    "game"
+  ]
+}
