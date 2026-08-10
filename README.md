@@ -34,6 +34,21 @@ For a distributable build, select `Release`; its files are produced under `Cactj
 3. Enter `/xlplugins`, open **Dev Tools → Installed Dev Plugins**, and enable **Cactjack**.
 4. Enter `/cactjack` to open or close the table window.
 
+## Easy tester installation
+
+Testers who do not build plugins can install Cactjack through its custom testing repository:
+
+1. In FFXIV, enter `/xlsettings`.
+2. Open **Experimental** and scroll to **Custom Plugin Repositories**.
+3. Add this URL and save:
+
+   `https://raw.githubusercontent.com/CometTheFrog/Cactjack/master/pluginmaster.json`
+
+4. Enter `/xlplugins`, search for **Cactjack**, and select **Install**.
+5. Enter `/cactjack` to open the table.
+
+This is an unofficial experimental repository. Remove the repository URL after testing if you do not want future alpha updates.
+
 ## Test a remote table
 
 Both players need the same Cactjack build and an internet connection.

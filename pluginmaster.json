@@ -1,0 +1,29 @@
+[
+  {
+    "Author": "CometTheFrog",
+    "Name": "Cactjack",
+    "InternalName": "Cactjack",
+    "AssemblyVersion": "0.1.0.0",
+    "Description": "An experimental multiplayer blackjack table for FFXIV. Includes solo practice, hosted tables, and remote online play.",
+    "Punchline": "Deal blackjack tables across Eorzea.",
+    "ApplicableVersion": "any",
+    "DalamudApiLevel": 15,
+    "TestingDalamudApiLevel": 15,
+    "RepoUrl": "https://github.com/CometTheFrog/Cactjack",
+    "DownloadLinkInstall": "https://github.com/CometTheFrog/Cactjack/releases/download/v0.1.0-alpha.1/Cactjack-Online-Alpha-0.1.zip",
+    "DownloadLinkUpdate": "https://github.com/CometTheFrog/Cactjack/releases/download/v0.1.0-alpha.1/Cactjack-Online-Alpha-0.1.zip",
+    "DownloadLinkTesting": "https://github.com/CometTheFrog/Cactjack/releases/download/v0.1.0-alpha.1/Cactjack-Online-Alpha-0.1.zip",
+    "IsTestingExclusive": false,
+    "AcceptsFeedback": true,
+    "Tags": [
+      "blackjack",
+      "cards",
+      "game",
+      "multiplayer"
+    ],
+    "CategoryTags": [
+      "other"
+    ],
+    "Changelog": "First online alpha release. Adds hosted remote tables, player wagers, ready checks, and networked Hit/Stand actions."
+  }
+]
