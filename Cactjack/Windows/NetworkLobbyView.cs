@@ -10,6 +10,8 @@ namespace Cactjack.Windows;
 
 public sealed class NetworkLobbyView : IDisposable
 {
+    private static readonly Vector2 CardSize = new(52, 68);
+    private readonly TablePresentationTimeline presentation = new();
     private WebSocketTableTransport? transport;
     private TableSession? hostSession;
     private TableHostProtocol? hostProtocol;
@@ -52,6 +54,7 @@ public sealed class NetworkLobbyView : IDisposable
 
     private void DrawConnectedTable()
     {
+        presentation.Update();
         ImGui.Text($"Room: {roomCode}  |  {(isHost ? "Host / Dealer" : playerName)}");
         ImGui.SameLine();
         if (ImGui.SmallButton("Copy Code")) ImGui.SetClipboardText(roomCode);
@@ -59,6 +62,14 @@ public sealed class NetworkLobbyView : IDisposable
         if (ImGui.SmallButton("Disconnect")) Disconnect();
         ImGui.SameLine();
         DrawStatus();
+        ImGui.SameLine();
+        if (ImGui.SmallButton($"Animation: {presentation.MotionMode}"))
+            presentation.MotionMode = presentation.MotionMode switch
+            {
+                PresentationMotionMode.Normal => PresentationMotionMode.Fast,
+                PresentationMotionMode.Fast => PresentationMotionMode.Reduced,
+                _ => PresentationMotionMode.Normal
+            };
 
         if (snapshot is null)
         {
@@ -96,30 +107,100 @@ public sealed class NetworkLobbyView : IDisposable
         else
         {
             DrawHands();
-            if (snapshot.Phase == TablePhase.PlayerTurns && snapshot.ViewerCanAct)
+            if (snapshot.Phase == TablePhase.PlayerTurns && snapshot.ViewerCanAct && !presentation.IsAnimating)
             {
                 if (ImGui.Button("Hit", new Vector2(90, 34))) SendPlayerCommand(TableCommandType.Hit);
                 ImGui.SameLine();
                 if (ImGui.Button("Stand", new Vector2(90, 34))) SendPlayerCommand(TableCommandType.Stand);
             }
-            if (isHost && snapshot.Phase == TablePhase.Settlement && ImGui.Button("Return to Betting", new Vector2(160, 34)))
+            if (isHost && snapshot.Phase == TablePhase.Settlement && !presentation.IsAnimating
+                && ImGui.Button("Return to Betting", new Vector2(160, 34)))
                 SendHostCommand(TableCommandType.NextRound);
         }
     }
 
     private void DrawHands()
     {
-        var dealer = string.Join(" ", snapshot!.VisibleDealerCards.Select(card => $"[{card}]"));
-        if (snapshot.DealerHoleCardHidden) dealer += " [??]";
+        var current = snapshot!;
         ImGui.Spacing();
-        ImGui.Text($"Dealer: {dealer}  Total {snapshot.VisibleDealerScore}");
-        foreach (var seat in snapshot.Seats)
+        ImGui.Text("DEALER");
+        DrawCards(current.VisibleDealerCards, presentation.VisibleDealerCards, -1, presentation.ShowDealerHoleBack);
+        var dealerTotal = presentation.IsAnimating && current.Phase == TablePhase.Settlement
+            ? BlackjackGame.Score(current.VisibleDealerCards.Take(presentation.VisibleDealerCards))
+            : current.VisibleDealerScore;
+        ImGui.Text($"Total: {dealerTotal}");
+        ImGui.Separator();
+        foreach (var seat in current.Seats)
         {
             if (!seat.IsOccupied || seat.Cards.Count == 0) continue;
-            var cards = string.Join(" ", seat.Cards.Select(card => $"[{card}]"));
-            var active = snapshot.ActiveSeatIndex == seat.Number - 1 ? "> " : string.Empty;
-            ImGui.Text($"{active}{seat.Name}: {cards}  Total {seat.Score}  {seat.Result}");
+            var seatIndex = seat.Number - 1;
+            var active = current.ActiveSeatIndex == seatIndex ? "> " : string.Empty;
+            ImGui.Text($"{active}{seat.Name}  •  Wager {seat.Wager:N0}");
+            var visibleCount = presentation.VisibleCardsForSeat(seatIndex);
+            DrawCards(seat.Cards, visibleCount, seatIndex, false);
+            var visibleScore = BlackjackGame.Score(seat.Cards.Take(visibleCount));
+            var result = presentation.IsAnimating ? string.Empty : $"  {seat.Result}";
+            ImGui.Text($"Total: {visibleScore}{result}");
+            ImGui.Spacing();
         }
+        if (presentation.IsAnimating)
+            ImGui.TextColored(new Vector4(0.95f, 0.78f, 0.3f, 1f), "Dealing...");
+    }
+
+    private void DrawCards(System.Collections.Generic.IReadOnlyList<Card> cards, int visibleCount, int ownerIndex, bool addHoleBack)
+    {
+        var drewAny = false;
+        for (var index = 0; index < Math.Min(visibleCount, cards.Count); index++)
+        {
+            if (drewAny) ImGui.SameLine();
+            var isRevealing = presentation.RevealingSeatIndex == ownerIndex && presentation.RevealingCardIndex == index;
+            DrawFaceCard(cards[index], $"card-{ownerIndex}-{index}", isRevealing ? presentation.StepProgress : 1f);
+            drewAny = true;
+        }
+        if (presentation.PendingSeatIndex == ownerIndex && presentation.PendingCardIndex >= visibleCount)
+        {
+            if (drewAny) ImGui.SameLine();
+            var slideProgress = EaseOutCubic(presentation.StepProgress);
+            ImGui.SetCursorPosX(ImGui.GetCursorPosX() + (1f - slideProgress) * 42f);
+            DrawBackCard($"pending-{ownerIndex}", 0.72f + slideProgress * 0.28f);
+            drewAny = true;
+        }
+        if (addHoleBack)
+        {
+            if (drewAny) ImGui.SameLine();
+            DrawBackCard("dealer-hole", 1f);
+        }
+    }
+
+    private static void DrawFaceCard(Card card, string id, float flipProgress)
+    {
+        var red = card.Suit is Suit.Hearts or Suit.Diamonds;
+        ImGui.PushStyleColor(ImGuiCol.Text, red ? new Vector4(0.85f, 0.08f, 0.08f, 1f) : new Vector4(0.08f, 0.08f, 0.1f, 1f));
+        PushCardColors(new Vector4(0.94f, 0.91f, 0.82f, 1f));
+        var width = CardSize.X * Math.Max(0.08f, EaseOutCubic(flipProgress));
+        ImGui.Button($"{card}##{id}", new Vector2(width, CardSize.Y));
+        ImGui.PopStyleColor(4);
+    }
+
+    private static void DrawBackCard(string id, float scale)
+    {
+        ImGui.PushStyleColor(ImGuiCol.Text, new Vector4(0.95f, 0.78f, 0.3f, 1f));
+        PushCardColors(new Vector4(0.32f, 0.07f, 0.08f, 1f));
+        ImGui.Button($"♣##{id}", new Vector2(CardSize.X * scale, CardSize.Y * scale));
+        ImGui.PopStyleColor(4);
+    }
+
+    private static float EaseOutCubic(float value)
+    {
+        var inverse = 1f - Math.Clamp(value, 0f, 1f);
+        return 1f - inverse * inverse * inverse;
+    }
+
+    private static void PushCardColors(Vector4 color)
+    {
+        ImGui.PushStyleColor(ImGuiCol.Button, color);
+        ImGui.PushStyleColor(ImGuiCol.ButtonHovered, color);
+        ImGui.PushStyleColor(ImGuiCol.ButtonActive, color);
     }
 
     private async Task CreateTableAsync()
@@ -131,7 +212,7 @@ public sealed class NetworkLobbyView : IDisposable
             roomCode = room.Code; isHost = true; clientId = "host";
             hostSession = new TableSession();
             hostProtocol = new TableHostProtocol(hostSession);
-            snapshot = hostProtocol.CreateSnapshot("host", true);
+            ApplySnapshot(hostProtocol.CreateSnapshot("host", true));
             transport = CreateTransport();
             transport.CommandReceived += OnRemoteCommand;
             await transport.ConnectHostAsync(room, clientId);
@@ -172,7 +253,7 @@ public sealed class NetworkLobbyView : IDisposable
     private void PublishAllSnapshots()
     {
         if (hostProtocol is null || hostSession is null || transport is null) return;
-        snapshot = hostProtocol.CreateSnapshot("host", true);
+        ApplySnapshot(hostProtocol.CreateSnapshot("host", true));
         foreach (var seat in hostSession.Seats.Where(seat => seat.IsOccupied && seat.ClientId.StartsWith("player-", StringComparison.Ordinal)))
             transport.Publish(hostProtocol.CreateSnapshot(seat.ClientId, false));
     }
@@ -190,7 +271,12 @@ public sealed class NetworkLobbyView : IDisposable
         transport.Send(new TableCommand(type, seat, value, SenderId: clientId, RequestId: Guid.NewGuid().ToString("N"), ExpectedRevision: snapshot.Revision));
     }
 
-    private void OnSnapshot(TableSnapshot next) => snapshot = next;
+    private void OnSnapshot(TableSnapshot next) => ApplySnapshot(next);
+    private void ApplySnapshot(TableSnapshot next)
+    {
+        presentation.Apply(snapshot, next);
+        snapshot = next;
+    }
     private void OnStatusChanged(string next) => status = next;
 
     private void Disconnect()
